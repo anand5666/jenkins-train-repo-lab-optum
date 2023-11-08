@@ -1,57 +1,56 @@
 pipeline {
 agent any
-parameters {
-choice(
-name: 'ENVIRONMENT',
-choices: ['dev', 'qa', 'prod'],
-description: 'Select the deployment environment'
-)
-choice(
-name: 'PRIORITY',
-choices: ['high', 'low', 'middle'],
-description: 'Select the priority'
-)
-}
+
 stages {
-stage('SCM code') {
+stage('chckout scm') {
 steps {
-git 'https://github.com/hellokaton/java11-examples.git'
+checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/anand5666/javaproj.git']])
 }
 }
-stage('Build') {
+stage('Compiling and Running Test Cases') {
 steps {
-sh 'mvn clean package'
+sh 'mvn clean'
+sh 'mvn compile'
+sh 'mvn test'
 }
 }
-stage('Publish High Priority') {
-when {
-expression { params.ENVIRONMENT == 'prod' && params.PRIORITY == 'high' }
-}
+stage('Generating a Cucumber Reports') {
 steps {
-// Add steps to publish high-priority artifacts or deploy the application for 'prod'
-// For example, you can use the 'archiveArtifacts' step to archive built artifacts
-archiveArtifacts 'target/*.jar'
+script {
+// Run Cucumber tests and generate reports
+sh 'mvn verify'
 }
 }
-stage('Publish Low Priority') {
-when {
-expression { params.ENVIRONMENT == 'prod' && params.PRIORITY == 'low' }
 }
+stage('Creating Package') {
 steps {
-// Add steps to publish low-priority artifacts or deploy the application for 'prod'
-// For example, you can use the 'archiveArtifacts' step to archive built artifacts
-archiveArtifacts 'target/*.jar'
+sh 'mvn package'
 }
 }
-stage('Publish Middle Priority') {
-when {
-expression { params.ENVIRONMENT == 'prod' && params.PRIORITY == 'middle' }
-}
+stage('adding genrerate report'){
 steps {
-// Add steps to publish middle-priority artifacts or deploy the application for 'prod'
-// For example, you can use the 'archiveArtifacts' step to archive built artifacts
-archiveArtifacts 'target/*.jar'
+sh 'mvn verify'
+}
+}
+stage('Install sonarqube cli') {
+steps {
+// Step to install SonarQube CLI
+sh 'wget -O sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip'
+sh 'unzip -o -q sonar-scanner.zip'
+sh 'rm -rf /opt/sonar-scanner'
+sh 'sudo mv --force sonar-scanner-5.0.1.3006-linux /opt/sonar-scanner'
+sh 'sudo sh -c \'echo "#/bin/bash \nexport PATH=\\\"$PATH:/opt/sonar-scanner/bin\\\"" >/etc/profile.d/sonar-scanner.sh\''
+sh 'sudo chmod +x /opt/sonar-scanner/bin/sonar-scanner'
+sh '. /etc/profile.d/sonar-scanner.sh'
+}
+}
+
+stage('Analyzing Code Quality') {
+steps {
+// Step to analyze code quality with SonarQube
+sh '/opt/sonar-scanner/bin/sonar-scanner -Dsonar.projectKey=anand5666_javaproj -Dsonar.organization=J V ANAND K -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=300 -Dsonar.sources=src/main/java/ -Dsonar.java.binaries=target/classes -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=2d816cc847fa30cbce10c70c2ce39bb6e25a9109'
 }
 }
 }
 }
+
