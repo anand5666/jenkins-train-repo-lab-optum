@@ -52,6 +52,11 @@ steps {
 sh '/opt/sonar-scanner/bin/sonar-scanner -Dsonar.projectKey=anand5666_javaproj -Dsonar.organization=anand5666 -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=300 -Dsonar.sources=src/main/java/ -Dsonar.java.binaries=target/classes -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=2d816cc847fa30cbce10c70c2ce39bb6e25a9109'
 }
 }
+stage('slack') {
+steps {
+slackSend channel: 'cicd', message: 'Build status'
+}
+}
 }
 }
 
